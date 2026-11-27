@@ -2,8 +2,8 @@
 
 NetPulse is a small FastAPI modular monolith for registering network devices and
 recording an alert when a device changes from online to offline. It simulates
-monitoring state only; it does not ping devices or use a database. Device and
-alert data live in memory and are cleared when the application restarts.
+monitoring state only; it does not ping devices. By default, data live in memory
+and are cleared on restart. Select MySQL for persistent devices and alerts.
 
 ## Run locally
 
@@ -52,20 +52,47 @@ models, field validation and documented response codes.
   errors into HTTP status codes.
 - **Service** (`app/services/device_service.py`) owns device rules, including
   duplicate/missing-device handling and detecting online-to-offline transitions.
-- **Repository** (`app/repositories/device_repository.py`) owns the in-memory
-  dictionaries and alert list, returning copies to protect stored state.
+- **Repositories** implement a shared interface for reading and writing devices
+  and alerts. The SQL repository returns API models, not ORM objects.
 - **Events** (`app/events.py`) creates and records an offline alert through the
   repository interface.
 
 The app is one deployable modular monolith: these layers are organized within
-one application and process. A future database-backed repository can replace
-the in-memory repository while leaving service business rules unchanged.
+one application and process. The route dependencies select a repository without
+changing the service's alert rule. In SQL mode each request uses one transaction,
+so the status change and its alert commit or roll back together.
+
+## Run with MySQL
+
+1. Create a dedicated MySQL database (`netpulse_db`) and grant a dedicated
+   account permission to manage tables and data in that database only.
+2. Copy `.env.example` to `.env`. Set the host, port, database, username and
+   password locally. Leave `NETPULSE_BACKEND=mysql`. Alternatively, set
+   `DATABASE_URL` to a `mysql+pymysql://` connection URL.
+3. From the project root with the virtual environment active, run:
+
+   ```bash
+   alembic upgrade head
+   alembic current
+   alembic history
+   uvicorn app.main:app --reload
+   ```
+
+4. Try the offline alert flow above, restart Uvicorn, then check `GET /devices`
+   and `GET /alerts` again. The rows should still be present.
+
+The two included revisions create `devices` and `alerts`, then add nullable
+`devices.location`. Do not regenerate them during setup. For a future model
+change, run `alembic revision --autogenerate -m "describe change"` and review
+the generated operations. On a **disposable lab database**, test the second
+revision with `alembic downgrade -1`, then `alembic upgrade head`; downgrading
+discards any values in the location column.
 
 ## Tests
 
-Run the isolated service tests from the project root:
+Run the service tests and the SQL repository test from the project root.
+The latter runs migrations on a temporary SQLite database, not your MySQL data:
 
 ```bash
 python -m pytest -q
 ```
-# netpluse-capstone
