@@ -5,27 +5,44 @@ recording an alert when a device changes from online to offline. It simulates
 monitoring state only; it does not ping devices. By default, data live in memory
 and are cleared on restart. Select MySQL for persistent devices and alerts.
 
-## Run locally
+## Quick start (no database required)
 
-From the project root, create and activate a virtual environment, then install
-the dependencies:
+Open the project folder in VS Code and select **Terminal > New Terminal**.
+On Linux or macOS, run these commands once from the folder containing
+`requirements.txt`:
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-On Windows, activate the environment with `.venv\Scripts\activate` instead.
-Start the API with:
+On Windows PowerShell, use `py -m venv .venv` and `.\.venv\Scripts\Activate.ps1`
+for the first two commands. Once the environment is active, start the API:
 
 ```bash
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
-Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for the Swagger
-UI. FastAPI builds `/openapi.json` from the route declarations, request/response
-models, field validation and documented response codes.
+Open the [health check](http://127.0.0.1:8000/health). If the server is running,
+you'll see `{"status":"ok"}`. To send requests from your browser, open
+[Swagger UI](http://127.0.0.1:8000/docs), expand an endpoint, and select
+**Try it out**. FastAPI generates the [OpenAPI schema](http://127.0.0.1:8000/openapi.json)
+from the routes and models.
+
+Keep the terminal open while using the API. Press **Ctrl+C** to stop it.
+Next time, activate the existing environment and run the start command again.
+
+## API reference
+
+| Method | Path | Result |
+| --- | --- | --- |
+| POST | `/devices` | Register a device (`201`; `409` if its ID already exists). |
+| GET | `/devices` | List registered devices. |
+| GET | `/devices/{device_id}` | Get one device (`404` if not found). |
+| PATCH | `/devices/{device_id}/status` | Update the device status (`404` if not found). |
+| GET | `/alerts` | List recorded offline alerts. |
+| GET | `/health` | Check that the API is responding. |
 
 ## Try the offline alert flow
 
